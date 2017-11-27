@@ -1,0 +1,36 @@
+#!/usr/bin/env ruby
+require_relative '../lib/self_generating_cli'
+require 'readline'
+
+# Populate autocomplete with all the modules and mehtods
+auto_complete = []
+module_info   = ModuleInfo.new
+klasses       = module_info.get_loaded_modules
+klasses.each do |klass|
+	module_name = module_info.get_module_name(klass)
+	auto_complete << module_name
+
+	(klass.new.methods.sort - SelfGeneratingCliModule.new.methods.sort - Object.methods).each do |meth|
+		auto_complete << "#{module_name} #{meth.to_s.gsub('_', '-').strip}"
+	end
+end
+
+# Run CLI
+comp = proc { |s| auto_complete.grep(/^#{Regexp.escape(s)}/) }
+Readline.completion_append_character = " "
+Readline.completer_word_break_characters = ""
+Readline.completion_proc = comp
+while(input = Readline.readline("sgcli> ", true))
+
+	if input == "exit"
+		break
+	elsif input == "history"
+		puts Readline::HISTORY.to_a
+	elsif input.empty?
+		Readline::HISTORY.pop
+		input = 'help'
+	end
+
+	command_excutor = CommandExecutor.new
+	command_excutor.execute(input)
+end
